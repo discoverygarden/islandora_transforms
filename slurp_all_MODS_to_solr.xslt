@@ -33,6 +33,66 @@
     <xsl:apply-templates mode="slurp_all_suffix" select="$content//mods:mods[1]"/>
   </xsl:template>
 
+  <xsl:template match="mods:recordInfo/mods:recordIdentifier" mode="slurping_MODS">
+    <xsl:param name="prefix"/>
+    <xsl:param name="suffix"/>
+    <xsl:param name="pid">not provided</xsl:param>
+    <xsl:param name="datastream">not provided</xsl:param>
+
+    <xsl:variable name="value" select="normalize-space(.)"/>
+    <xsl:variable name="major" select="java:replaceAll($value, '\A([0-9]+)\.[0-9]+.*\z', '$1')"/>
+    <xsl:variable name="minor" select="java:replaceAll($value, '\A[0-9]+\.([0-9]+).*\z', '$1')"/>
+
+    <xsl:variable name="this_prefix">
+      <xsl:value-of select="concat($prefix, local-name(), '_')"/>
+      <xsl:if test="@type">
+        <xsl:value-of select="concat(translate(@type, ' ', '_'), '_')"/>
+      </xsl:if>
+    </xsl:variable>
+
+    <xsl:if test="$major">
+      <xsl:variable name="major_version_prefix" select="concat($this_prefix, 'major_version_')"/>
+      <xsl:variable name="minor_version_prefix" select="concat($this_prefix, 'minor_version_')"/>
+      <xsl:variable name="version_field_suffix">
+        <xsl:choose>
+          <xsl:when test="java:add($single_valued_hashset, string($major_version_prefix))">
+            <xsl:text>i</xsl:text>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:text>mi</xsl:text>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:variable>
+      <field>
+        <xsl:attribute name="name">
+          <xsl:value-of select="concat($major_version_prefix, $version_field_suffix)"/>
+        </xsl:attribute>
+        <xsl:value-of select="$major"/>
+      </field>
+      <field>
+        <xsl:attribute name="name">
+          <xsl:value-of select="concat($minor_version_prefix, $version_field_suffix)"/>
+        </xsl:attribute>
+        <xsl:choose>
+          <xsl:when test="$minor">
+            <xsl:value-of select="$minor"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:text>0</xsl:text>
+          </xsl:otherwise>
+        </xsl:choose>
+      </field>
+    </xsl:if>
+
+    <xsl:call-template name="mods_language_fork">
+      <xsl:with-param name="prefix" select="$this_prefix"/>
+      <xsl:with-param name="suffix" select="$suffix"/>
+      <xsl:with-param name="value" select="$value"/>
+      <xsl:with-param name="pid" select="$pid"/>
+      <xsl:with-param name="datastream" select="$datastream"/>
+    </xsl:call-template>
+  </xsl:template>
+
   <!-- Handle dates. -->
   <xsl:template match="mods:*[(@type='date') or (contains(translate(local-name(), 'D', 'd'), 'date'))][normalize-space(text())]" mode="slurping_MODS">
     <xsl:param name="prefix"/>
